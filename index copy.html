@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>无碍理想：老米与毛毛的探索</title>
+    <link href="https://fonts.googleapis.com/css2?family=ZCOOL+XiaoWei&display=swap" rel="stylesheet">
+    <style>
+        :root { --beer-gold: #f4a460; --ink: #3d2b1f; --bg: #fdf5e6; }
+        body, html { margin: 0; padding: 0; width: 100%; height: 100%; background: #000; font-family: 'ZCOOL XiaoWei', serif; overflow: hidden; }
+
+        /* --- 1. 首屏动画：毛毛速率变慢20% --- */
+        #landing-page { position: fixed; inset: 0; background: #000; z-index: 9999; display: flex; flex-direction: column; align-items: center; justify-content: center; color: var(--beer-gold); }
+        .store-logo { width: 120px; height: auto; border-radius: 8px; margin-bottom: 15px; }
+        .intro-animation-rail { width: 100%; height: 120px; position: relative; overflow: hidden; margin: 10px 0; background: rgba(255,255,255,0.05); }
+        .actor { position: absolute; width: 80px; height: 80px; background-size: contain; background-repeat: no-repeat; background-position: center; bottom: 10px; left: -100px; will-change: left, opacity; }
+        .laomi { background-image: url('asset/laomi.png'); animation: laomiWalk 10s ease-in-out infinite; z-index: 2; }
+        .maomao { background-image: url('asset/maomao.png'); animation: maomaoWalk 10s ease-in-out infinite; z-index: 1; }
+        .char-group { background-image: url('asset/charactor.png'); opacity: 0; animation: groupWalk 10s ease-in-out infinite; z-index: 3; }
+
+        @keyframes laomiWalk { 0% { left: -100px; opacity: 1; } 12% { left: 25%; opacity: 1; } 24.9% { left: 25%; opacity: 1; } 25% { left: 25%; opacity: 0; } 100% { left: 25%; opacity: 0; } }
+        @keyframes maomaoWalk { 0% { left: -100px; opacity: 1; } 4% { left: -100px; opacity: 1; } 24% { left: 25%; opacity: 1; } 24.9% { left: 25%; opacity: 1; } 25% { left: 25%; opacity: 0; } 100% { left: 25%; opacity: 0; } }
+        @keyframes groupWalk { 0%, 24.8% { left: 25%; opacity: 0; } 25% { left: 25%; opacity: 1; } 100% { left: 110%; opacity: 1; } }
+
+        /* --- 2. 地图 UI --- */
+        #map-viewport { width: 100vw; height: 100vh; background: var(--bg); position: relative; display: flex; align-items: center; justify-content: center; }
+        .map-content { width: 100%; height: 100%; position: relative; max-width: 500px; }
+        #main-map { width: 100%; height: 100%; object-fit: contain; display: block; }
+        #player-char { position: absolute; width: 60px; height: 60px; background: url('asset/charactor.png') no-repeat center; background-size: contain; z-index: 500; transform: translate(-50%, -85%); transition: all 0.8s ease; pointer-events: none; }
+        .hotspot { position: absolute; width: 32px; height: 32px; background: #fff; border: 2px solid var(--ink); border-radius: 50%; display: flex; align-items: center; justify-content: center; z-index: 100; font-size: 1.1rem; box-shadow: 0 2px 5px rgba(0,0,0,0.2); }
+        .hotspot.active { border-color: var(--beer-gold); box-shadow: 0 0 10px var(--beer-gold); animation: pulse 1.5s infinite; }
+        @keyframes pulse { 0% { transform:scale(1); } 50% { transform:scale(1.1); } 100% { transform:scale(1); } }
+        .hotspot.finished { background: var(--beer-gold); color: white; border-color: white; opacity: 0.8; }
+
+        /* --- 3. 问答弹窗 --- */
+        #quiz-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.85); z-index: 2000; display: none; align-items: center; justify-content: center; }
+        .quiz-card { width: 85%; max-width: 350px; background: white; padding: 25px; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
+        .opt-btn { width: 100%; padding: 14px; margin: 8px 0; border: 1.5px solid #f0f0f0; border-radius: 12px; background: #fff; font-family: inherit; font-size: 0.95rem; text-align: left; transition: 0.2s; }
+        .opt-btn:active { background: #fff5e6; border-color: var(--beer-gold); }
+        .arrived-btn { background: var(--beer-gold); color: white; border: none; padding: 16px 45px; border-radius: 35px; font-size: 1.2rem; font-family: inherit; cursor: pointer; box-shadow: 0 5px 15px rgba(244,164,96,0.4); }
+
+        /* --- 4. 视频结局平滑优化 --- */
+        #ending-overlay { position: fixed; inset: 0; background: #000; z-index: 10000; display: none; flex-direction: column; align-items: center; justify-content: center; color: white; opacity: 0; transition: opacity 0.8s ease; }
+        #ending-video { width: 100%; max-height: 80vh; background: #000; }
+        #reward-card { display: none; text-align: center; padding: 20px; }
+        .timestamp { font-family: monospace; font-size: 0.8rem; color: #888; margin-top: 10px; }
+    </style>
+</head>
+<body>
+
+    <div id="landing-page">
+        <img src="asset/logo.jpg" class="store-logo">
+        <div class="intro-animation-rail">
+            <div class="actor laomi"></div>
+            <div class="actor maomao"></div>
+            <div class="actor char-group"></div>
+        </div>
+        <p style="padding: 0 30px; text-align: center; opacity: 0.8; font-size: 0.85rem; line-height: 1.6;">帮老米和毛毛解决挑战<br>抵达酒馆即可兑换精酿一份！</p>
+        <button onclick="startGame()" style="margin-top:20px; padding:12px 50px; border:2px solid var(--beer-gold); background:none; color:var(--beer-gold); border-radius:30px; font-family: inherit; cursor: pointer;">开启旅程</button>
+    </div>
+
+    <div id="map-viewport">
+        <div class="map-content">
+            <img src="asset/map.png" id="main-map">
+            <div id="player-char"></div>
+            <div id="spots-group"></div>
+        </div>
+    </div>
+
+    <div id="quiz-overlay">
+        <div id="quiz-content" class="quiz-card">
+            <p id="q-text" style="font-weight: bold; margin-bottom: 20px; color: #333; line-height: 1.5; font-size: 1.1rem;"></p>
+            <div id="opt-box"></div>
+        </div>
+        <div id="arrival-prompt" style="display:none; text-align:center;">
+            <button class="arrived-btn" onclick="playEnding()">抵达酒馆 🍻</button>
+        </div>
+    </div>
+
+    <div id="ending-overlay">
+        <video id="ending-video" playsinline preload="auto">
+            <source src="asset/video.mp4" type="video/mp4">
+        </video>
+        <div id="reward-card">
+            <h2 style="color: var(--beer-gold);">理想精酿兑换券</h2>
+            <img src="asset/logo.jpg" style="width:110px; border-radius:10px; border:2px solid var(--beer-gold); margin: 15px 0;">
+            <p style="font-size: 1.1rem; line-height: 1.6;">凭此界面前往吧台<br><strong>免费兑换精酿 1 杯</strong></p>
+            <div id="time-tag" class="timestamp"></div>
+            <button onclick="location.reload()" style="margin-top:25px; background:none; border:1px solid #666; color:#999; padding:8px 20px; border-radius:20px; font-size:0.75rem;">返回地图</button>
+        </div>
+    </div>
+
+<script>
+    // --- 内置去重题库 ---
+    const fullBank = [
+        {q: "遇视障者问路，专业指引方式？", a: "用方向+距离描述，如“正前方5米右转”。"},
+        {q: "盲道被占用，正确处理流程？", a: "立即清理障碍物，无法处理时联系市政或物业。"},
+        {q: "门店接待导盲犬，专业服务标准？", a: "允许进入，提供清水，不喂食、不抚摸、不干扰。"},
+        {q: "线上信息无障碍，图片必做操作？", a: "添加 Alt 文本描述内容，确保屏幕阅读器可识别。"},
+        {q: "轮椅使用者通行，通道宽度要求？", a: "保持通道≥1.2米，坡度≤1:12。"},
+        {q: "临时设置无障碍区域，必备要素？", a: "清晰标识、无障碍物、预留轮椅位及专人协助岗。"},
+        {q: "低位服务台，标准高度是多少？", a: "台面高度≤80cm，下方预留容膝空间≥65cm。"},
+        {q: "公共卫生间，无障碍配置有哪些？", a: "扶手、紧急呼叫按钮、足够的轮椅回转空间。"},
+        {q: "与残障者沟通，核心原则是什么？", a: "尊重其自主意愿，聚焦能力而非障碍。"},
+        {q: "视障者未带导盲犬，如何提供引路协助？", a: "询问后让其扶你手臂肘部，稳步引导并提示环境。"},
+        {q: "在地铁遇到轮椅乘客，该如何帮忙？", a: "协助按无障碍电梯按钮，提醒注意站台间隙。"},
+        {q: "标准汉语盲文的基本单元是什么？", a: "以 6 点盲方（2 行 ×3 列）为基本单元。"},
+        {q: "盲文是由文字形状演变的吗？", a: "不是，盲文是点位编码系统，靠触感识别。"},
+        {q: "遇到视障人士，正确的打招呼方式？", a: "先开口说话示意，不要突然触碰或从背后搀扶。"},
+        {q: "共享单车可以停放在无障碍通道上吗？", a: "不可以，严禁占用无障碍通道、盲道。"},
+        {q: "公共停车场应当如何配置无障碍车位？", a: "按比例设置明显标识，并靠近无障碍通道。"}
+    ];
+
+    const mapNodes = [
+        {t: 17.5, l: 45}, {t: 36.2, l: 19.5}, {t: 30.5, l: 70.2}, {t: 41.8, l: 88.5}, {t: 50.2, l: 80.5},
+        {t: 54.5, l: 52.8}, {t: 66.8, l: 28.5}, {t: 80.2, l: 21.5}, {t: 75.5, l: 58.2}, {t: 88.5, l: 63.8}
+    ];
+
+    let gameTasks = [];
+    let currentLvl = 0;
+
+    function startGame() {
+        const shuffled = [...fullBank].sort(() => Math.random() - 0.5);
+        gameTasks = shuffled.slice(0, 9).map(task => {
+            let distractors = [];
+            // 根据关键词生成逻辑相关的干扰项
+            if (task.q.includes("视障") || task.q.includes("盲道") || task.q.includes("指引")) {
+                distractors = ["大声对他喊话确保能听见", "直接拉住他的盲杖帮他走"];
+            } else if (task.q.includes("导盲犬")) {
+                distractors = ["偷偷喂它吃好吃的表示友好", "热情地蹲下摸摸它的头"];
+            } else if (task.q.includes("轮椅") || task.q.includes("通道")) {
+                distractors = ["从背后推起轮椅就加速跑", "建议他下次换个交通工具"];
+            } else if (task.q.includes("盲文")) {
+                distractors = ["盲文是汉字笔画的缩写", "盲人靠意念感应文字含义"];
+            } else {
+                distractors = ["站在原地保持礼貌的微笑", "查查手机看看攻略再说"];
+            }
+            const opts = [task.a, ...distractors].sort(() => Math.random() - 0.5);
+            return { q: task.q, opts: opts, correct: task.a };
+        });
+        
+        // 第10关：搞笑送分终点题
+        gameTasks.push({
+            q: "终点站！为了庆祝老米与毛毛顺利抵达，你最想？",
+            opts: ["立刻冲进理想酒馆干一杯", "学习更多知识发个朋友圈", "以上全都要，老板满上！"],
+            correct: "以上全都要，老板满上！"
+        });
+
+        document.getElementById('landing-page').style.display = 'none';
+        const group = document.getElementById('spots-group');
+        group.innerHTML = '';
+        mapNodes.forEach((pos, i) => {
+            const el = document.createElement('div');
+            el.className = `hotspot ${i===0?'active':''}`;
+            el.id = `spot-${i}`;
+            el.style.top = pos.t + '%';
+            el.style.left = pos.l + '%';
+            el.innerText = i === 9 ? "🍻" : (i + 1);
+            el.onclick = () => { if(i===currentLvl) showQuiz(i); };
+            group.appendChild(el);
+        });
+        updateDisplay();
+    }
+
+    function showQuiz(idx) {
+        const data = gameTasks[idx];
+        document.getElementById('quiz-content').style.display = 'block';
+        document.getElementById('arrival-prompt').style.display = 'none';
+        document.getElementById('q-text').innerText = (idx === 9 ? "🏁 " : `挑战 ${idx+1}: `) + data.q;
+        const box = document.getElementById('opt-box');
+        box.innerHTML = '';
+        
+        data.opts.forEach(txt => {
+            const btn = document.createElement('button');
+            btn.className = 'opt-btn';
+            btn.innerText = txt;
+            btn.onclick = () => {
+                if(txt === data.correct || idx === 9) {
+                    if(currentLvl === 9) {
+                        document.getElementById('quiz-content').style.display = 'none';
+                        document.getElementById('arrival-prompt').style.display = 'block';
+                    } else {
+                        document.getElementById('quiz-overlay').style.display = 'none';
+                        document.getElementById(`spot-${idx}`).classList.replace('active', 'finished');
+                        currentLvl++;
+                        document.getElementById(`spot-${currentLvl}`).classList.add('active');
+                        updateDisplay();
+                    }
+                } else {
+                    btn.innerText = "🙅 再想想，老米在叹气...";
+                    btn.style.color = "#ff4d4d";
+                }
+            };
+            box.appendChild(btn);
+        });
+        document.getElementById('quiz-overlay').style.display = 'flex';
+    }
+
+    function updateDisplay() {
+        const char = document.getElementById('player-char');
+        char.style.top = mapNodes[currentLvl].t + '%';
+        char.style.left = mapNodes[currentLvl].l + '%';
+    }
+
+    function playEnding() {
+        document.getElementById('quiz-overlay').style.display = 'none';
+        const overlay = document.getElementById('ending-overlay');
+        const video = document.getElementById('ending-video');
+        overlay.style.display = 'flex';
+        // 强制回流后触发渐显
+        void overlay.offsetWidth;
+        overlay.style.opacity = '1';
+
+        video.play().catch(() => showReward());
+        video.onended = showReward;
+    }
+
+    function showReward() {
+        document.getElementById('ending-video').style.display = 'none';
+        document.getElementById('reward-card').style.display = 'block';
+        document.getElementById('time-tag').innerText = "验证码：" + Math.random().toString(36).substr(2, 6).toUpperCase() + " | " + new Date().toLocaleString();
+    }
+</script>
+</body>
+</html>
